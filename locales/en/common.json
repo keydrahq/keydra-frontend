@@ -1,0 +1,10 @@
+{
+  "LOADING": "Loading",
+  "RETRY": "Retry",
+  "CANCEL": "Cancel",
+  "TYPE_THE_NAME": "Type {{name}} to continue",
+  "TYPE_THE_NAME_HELP": "This target asks to be named before anything empties it. The name is checked on the server, not here.",
+  "CLOSE": "Close",
+  "SAVE": "Save",
+  "DELETE": "Delete"
+}

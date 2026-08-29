@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      # --immutable: a lockfile the install would have changed fails here rather than
+      # quietly resolving to something nobody has run.
+      - name: Install
+        run: yarn install --immutable
+
+      # prettier --check, eslint and tsc -b, in one script. All three, because a type error
+      # that only shows up in a production build is one nobody sees until the build.
+      - name: Lint
+        run: yarn lint
+
+      - name: Test
+        run: yarn test:ci
+
+      # The interface ships as static files built into the backend's image, so a build that
+      # only works in dev mode is a build that works nowhere it matters.
+      - name: Build
+        run: yarn build

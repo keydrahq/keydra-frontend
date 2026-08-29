@@ -1,0 +1,174 @@
+/*
+ * The login page's background: a cluster of circles in the corner, in PatternFly's own idiom.
+ *
+ * Behind everything and interactive with nothing — the form sits on top of it, and a background
+ * that caught a click or a tab stop would be a background in the way.
+ */
+
+/*
+ * Layered explicitly, both halves of it, because "behind" is not where an element is written in the
+ * document — it is what its z-index says, and the two obvious answers are both wrong here.
+ *
+ * At z-index 0 this is a positioned element, and a positioned element paints after every
+ * unpositioned one in the same stacking context: it covered the login card entirely. At -1 it goes
+ * under the card and under the body's background with it, which paints over the motif and leaves a
+ * flat page.
+ *
+ * So: the backdrop stays at 0 and the login page is lifted above it. Two rules that say what they
+ * mean, instead of one that depends on how a browser resolves the body background against the
+ * canvas.
+ */
+.keydra-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pf-v6-c-login {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * PatternFly draws its own motif behind the login page. Two are one too many, and its one is a
+ * still image where this one moves.
+ */
+.pf-v6-c-login::before {
+  display: none;
+}
+
+/*
+ * Anchored to the bottom-right corner and allowed to run off both edges.
+ *
+ * `slice` rather than `meet`: the composition keeps its proportions and the frame crops it, which
+ * is what makes a corner cluster read as a corner cluster on every shape of window. Fitting it
+ * inside instead would centre it and shrink it into a logo.
+ *
+ * Sized past the viewport on purpose. The largest circles belong half off the page — a motif whose
+ * every element is fully visible reads as a diagram.
+ */
+.keydra-backdrop__motif {
+  position: absolute;
+  right: -6vmin;
+  bottom: -6vmin;
+  width: min(62vw, 48vmax);
+  height: min(62vh, 48vmax);
+  overflow: visible;
+}
+
+/*
+ * Every mark is the brand colour, and the difference between them is only how much of it there is.
+ * Three hues would be a palette; one hue at three strengths is a family.
+ */
+.keydra-backdrop__node--solid {
+  fill: var(--pf-t--global--color--brand--default, #ee0000);
+  opacity: 0.32;
+}
+
+.keydra-backdrop__node--outline {
+  fill: none;
+  stroke: var(--pf-t--global--color--brand--default, #ee0000);
+  stroke-width: 0.5;
+  opacity: 0.42;
+}
+
+.keydra-backdrop__node--dotted {
+  opacity: 0.4;
+}
+
+.keydra-backdrop__dot {
+  fill: var(--pf-t--global--color--brand--default, #ee0000);
+}
+
+/*
+ * The threads are the quietest thing here. They say the circles belong together; anything louder
+ * and they would be saying it twice.
+ */
+.keydra-backdrop__threads line {
+  stroke: var(--pf-t--global--color--brand--default, #ee0000);
+  stroke-width: 0.16;
+  opacity: 0.22;
+}
+
+/*
+ * Three cycles that share no common factor, so the arrangement never returns to one the eye has
+ * already seen. Transform only, and each circle transforms about its own centre — the browser
+ * composites these and never lays out or paints again, which is what keeps a background off the
+ * frame budget.
+ *
+ * Slow to the point of being hard to catch in the act. A background somebody watches is a
+ * background competing with the thing they came here to do.
+ */
+.keydra-backdrop__node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform;
+}
+
+.keydra-backdrop__node--drift-1 {
+  animation-name: keydra-drift-a;
+  animation-duration: 23s;
+}
+
+.keydra-backdrop__node--drift-2 {
+  animation-name: keydra-drift-b;
+  animation-duration: 31s;
+}
+
+.keydra-backdrop__node--drift-3 {
+  animation-name: keydra-drift-c;
+  animation-duration: 43s;
+}
+
+@keyframes keydra-drift-a {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-1.6%, -2.4%) scale(1.06);
+  }
+}
+
+@keyframes keydra-drift-b {
+  from {
+    transform: translate(0, 0) scale(1.04);
+  }
+  to {
+    transform: translate(2.2%, 1.4%) scale(0.95);
+  }
+}
+
+@keyframes keydra-drift-c {
+  from {
+    transform: translate(0, 0) scale(0.97);
+  }
+  to {
+    transform: translate(-2.4%, 1.8%) scale(1.08);
+  }
+}
+
+/*
+ * Below the card's breakpoint the page is the card, and a motif behind it has nowhere to be that
+ * is not underneath the form.
+ */
+@media (max-width: 1200px) {
+  .keydra-backdrop__motif {
+    display: none;
+  }
+}
+
+/*
+ * Asked for less movement: the cluster stays where it is rather than going away. The picture is
+ * never drawn *by* the animation — that mistake left an empty page once already.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .keydra-backdrop__node {
+    animation: none;
+  }
+}

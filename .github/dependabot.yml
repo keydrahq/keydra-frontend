@@ -1,0 +1,67 @@
+# Dependency updates.
+#
+# Grouped, and minor-and-patch only. The rule about majors is not caution for its own sake:
+# a sibling repository took Quarkus six minor versions inside a pull request labelled
+# "minor-and-patch", and it cost fifty-four tests. React and PatternFly move the same way.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+    # A major is an API change somebody has to read about. `yarn upgrade-interactive` says
+    # what is waiting whenever somebody wants to look.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+    groups:
+      # The framework and the design system move together and break together.
+      react:
+        applies-to: version-updates
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom', 'react-router*']
+      patternfly:
+        applies-to: version-updates
+        patterns: ['@patternfly/*']
+
+      # What a red build gets blamed on first.
+      testing:
+        applies-to: version-updates
+        patterns: ['vitest', '@vitest/*', '@testing-library/*', 'msw', 'jsdom']
+
+      # Everything else, with the three above kept out by name. A group defined only by
+      # update-types matches everything, which is exactly how the sibling repository's
+      # framework ended up in one.
+      minor-and-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+        exclude-patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+          - 'react-router*'
+          - '@patternfly/*'
+          - 'vitest'
+          - '@vitest/*'
+          - '@testing-library/*'
+          - 'msw'
+          - 'jsdom'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+    labels:
+      - dependencies
+      - ci

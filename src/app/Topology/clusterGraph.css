@@ -1,0 +1,121 @@
+/*
+ * React Flow, wearing PatternFly.
+ *
+ * The library draws from its own custom properties, so making it look like the rest of the
+ * application is a matter of assigning PatternFly's design tokens to them rather than of writing
+ * rules against its class names. That is what PatternFly's own React Flow guide recommends, and it
+ * is why this file is a list of assignments: every one of them then follows the viewer's theme,
+ * because the token on the right is the one that changes when the theme does.
+ */
+.keydra-graph .react-flow {
+  --xy-node-border-radius-default: var(--pf-t--global--border--radius--medium);
+  --xy-edge-stroke-default: var(--pf-t--global--border--color--default);
+  --xy-edge-stroke-width-default: var(--pf-t--global--border--width--regular);
+  --xy-edge-stroke-selected-default: var(--pf-t--global--border--color--clicked);
+  --xy-connectionline-stroke-default: var(--pf-t--global--border--color--default);
+  --xy-connectionline-stroke-width-default: var(--pf-t--global--border--width--regular);
+  --xy-attribution-background-color-default: transparent;
+  --xy-background-pattern-dots-color-default: var(--pf-t--global--border--color--disabled);
+  --xy-node-color-default: var(--pf-t--global--text--color--regular);
+  --xy-node-border-default: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  --xy-node-background-color-default: var(--pf-t--global--background--color--primary--default);
+  --xy-node-boxshadow-hover-default: var(--pf-t--global--box-shadow--sm);
+  --xy-node-boxshadow-selected-default: var(--pf-t--global--box-shadow--md);
+  --xy-handle-background-color-default: var(--pf-t--global--color--brand--default);
+  --xy-handle-border-color-default: var(--pf-t--global--border--color--alt);
+  --xy-controls-button-background-color-default: var(
+    --pf-t--global--background--color--primary--default
+  );
+  --xy-controls-button-background-color-hover-default: var(
+    --pf-t--global--background--color--secondary--default
+  );
+  --xy-controls-button-color-default: var(--pf-t--global--icon--color--regular);
+  --xy-controls-button-border-color-default: var(--pf-t--global--border--color--default);
+
+  background-color: var(--pf-t--global--background--color--secondary--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+}
+
+/*
+ * The card is the node. React Flow draws a box of its own around whatever a custom node renders,
+ * and two nested boxes with two borders and two radii is the look this rewrite exists to leave
+ * behind.
+ */
+.keydra-graph .react-flow__node-shard,
+.keydra-graph .react-flow__node-follower {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  width: auto;
+}
+
+/*
+ * The handles are joins, not controls. An edge has to attach somewhere and React Flow requires a
+ * handle to attach to, but nothing here is connectable by dragging — showing the dots would be
+ * offering an interaction that does nothing.
+ */
+.keydra-graph .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A card is a card: its own hover and focus states are PatternFly's, not the library's. */
+.keydra-graph .react-flow__node.selectable:focus,
+.keydra-graph .react-flow__node.selectable:focus-visible {
+  outline: none;
+}
+
+.keydra-graph .keydra-graph__node {
+  width: 15rem;
+  cursor: pointer;
+}
+
+/*
+ * The shard's colour, as a rule down the side of its card rather than as its background. A card
+ * filled with a categorical colour would be shouting a name; a rule beside it says the same name
+ * quietly, and leaves the card's own surface to carry the text at full contrast in either theme.
+ */
+.keydra-graph__node--accented {
+  border-inline-start: var(--pf-t--global--border--width--strong) solid var(--keydra-shard-color);
+}
+
+/* The address is what a person matches against a config file, so it is set as one. */
+.keydra-graph__address {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The keyboard's way in. A graph that can only be operated with a mouse is one half of the people
+ * who have to read it, and React Flow makes its nodes focusable — this is what makes that visible.
+ */
+.keydra-graph .react-flow__node:focus-visible .keydra-graph__node {
+  outline: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--color--brand--default);
+  outline-offset: 2px;
+}
+
+/*
+ * A slot on the move, drawn as a move.
+ *
+ * <p>Brand colour and a dashed line that runs: the other edges say a replica follows a primary,
+ * which is a fact that will still be true tomorrow. This one says something is happening right
+ * now, and it stops being drawn the moment the reshard finishes.
+ */
+.keydra-graph .react-flow__edge.keydra-graph__move .react-flow__edge-path {
+  stroke: var(--pf-t--global--color--brand--default);
+  stroke-width: var(--pf-t--global--border--width--strong);
+}
+
+.keydra-graph .react-flow__edge.keydra-graph__move .react-flow__edge-text {
+  fill: var(--pf-t--global--text--color--regular);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.keydra-graph .react-flow__edge.keydra-graph__move .react-flow__edge-textbg {
+  fill: var(--pf-t--global--background--color--primary--default);
+}

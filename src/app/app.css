@@ -1,0 +1,497 @@
+/* PatternFly base styles plus the few app-level rules Keydra needs. */
+@import '@patternfly/react-core/dist/styles/base.css';
+
+/* PatternFly's utility classes — spacing, alignment, typography, sizing. They are not in
+   base.css, so without this import every `pf-v6-u-*` class in the application silently
+   does nothing. With it, the things this file used to say by hand are said by PatternFly:
+   a monospace value is `pf-v6-u-font-family-monospace`, a card body with no inset of its
+   own is `pf-v6-u-p-0`. */
+@import '@patternfly/react-styles/css/utilities/_index.css';
+
+/* The catalog view extension's own stylesheet — tiles and the filter panel. Extensions
+   ship separately from the core, so without this their markup renders unstyled. */
+@import '@patternfly/react-catalog-view-extension/dist/css/react-catalog-view-extension.css';
+
+html,
+body,
+#root {
+  block-size: 100%;
+  margin: 0;
+}
+
+/* A tabbed form's dialog keeps its height as the tabs are used; see the comment where
+   the class is applied for why PatternFly cannot say this itself. Tall enough for the
+   shorter tabs, so the common case stops moving; the longest tab still grows past it. */
+.keydra-form-modal__body {
+  min-block-size: 26rem;
+}
+
+/* The header itself is PatternFly's: a breadcrumb section, then a page section
+   carrying the title. Only two things are left to say here.
+
+   A flex item's automatic minimum size is its content, so without this the title
+   pushes the page's buttons off a narrow window instead of truncating. */
+.keydra-page-header__text {
+  min-inline-size: 0;
+}
+
+/* A tool's own controls, above its content. */
+.keydra-tool-toolbar {
+  padding-block: 0;
+  padding-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.keydra-stat__label {
+  font-size: var(--pf-t--global--font--size--body--default);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* Tabular figures, for the same reason as the vitals strip: a number that changes
+   every few seconds must not change width while it does. */
+.keydra-stat__value {
+  font-variant-numeric: tabular-nums;
+  margin-block: var(--pf-t--global--spacer--xs);
+}
+
+.keydra-stat__hint {
+  font-size: var(--pf-t--global--font--size--body--default);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* Key table: a virtualised list, so the grid is laid out by CSS rather than by
+   <table>, which cannot position rows absolutely. Column widths are fixed for the
+   same reason the connections table fixes them — content must not shift the grid. */
+.keydra-key-table {
+  overflow: hidden;
+}
+
+.keydra-key-table__header,
+.keydra-key-table__row {
+  display: grid;
+  /* minmax keeps the key column readable when the drawer takes half the width;
+     without a floor, the fixed columns consumed everything and keys rendered as "demo…". */
+  grid-template-columns: 2.5rem minmax(7rem, 1fr) 5.5rem 5rem 2.5rem;
+  align-items: center;
+  column-gap: var(--pf-t--global--spacer--sm);
+  padding-inline: var(--pf-t--global--spacer--md);
+}
+
+.keydra-key-table__header {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  background: var(--pf-t--global--background--color--secondary--default);
+  block-size: 2.5rem;
+}
+
+.keydra-key-table__row {
+  border-block-start: 1px solid var(--pf-t--global--border--color--default);
+}
+
+.keydra-key-table__viewport {
+  overflow: auto;
+}
+
+/* Keys can be long; truncate rather than wrap so every row stays one line high,
+   which is what makes a fixed row height (and therefore virtualisation) valid. */
+.keydra-key-table__cell--key {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--pf-t--global--font--family--mono);
+}
+
+/* The key name is the affordance that opens the value, so it looks and behaves
+   like a link while keeping the row's single-line height. */
+.keydra-key-table__key-button {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pf-t--global--text--color--link--default);
+}
+
+.keydra-key-table__key-button:hover,
+.keydra-key-table__key-button:focus-visible {
+  text-decoration: underline;
+}
+
+.keydra-key-table__key-button:focus-visible {
+  outline: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--border--color--brand--default);
+  outline-offset: calc(-1 * var(--pf-t--global--border--width--strong));
+}
+
+/* The row whose value is open in the drawer, so the list keeps its place. An accent
+   bar rather than a filled background: a full-width highlight on one row reads as a
+   rendering fault next to PatternFly's otherwise quiet table. */
+.keydra-key-table__row--active {
+  background: var(--pf-t--global--background--color--secondary--default);
+  box-shadow: inset 3px 0 0 0 var(--pf-t--global--color--brand--default);
+}
+
+.keydra-detail__key-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The add row stays reachable while a long collection scrolls under it. */
+.keydra-value__add {
+  padding-block-end: var(--pf-t--global--spacer--sm);
+  background: var(--pf-t--global--background--color--primary--default);
+}
+
+.keydra-stream-draft__row {
+  padding-block-end: var(--pf-t--global--spacer--xs);
+}
+
+/* Key browser layout.
+
+   The page owns the height rather than the table: the browser is the whole screen's
+   job, and a table with a hardcoded height leaves a band of empty page under it on a
+   tall window while still scrolling on a short one.
+
+   The one rule that makes this work is that every level must be *allowed to shrink*.
+   PatternFly's filled page section is `flex: 1 0 auto`, so it cannot shrink below its
+   content — with a virtualised list inside, the section grew to the full scroll height
+   (four hundred thousand pixels for ten thousand rows), the virtualiser measured that
+   as the visible area, and rendered every row into the DOM. That is not a slow table,
+   it is the tab running out of memory. Hence `flex-shrink: 1` and `min-block-size: 0`
+   at every level: a flex child's automatic minimum size is its content, and a
+   scrollable child must be permitted to be smaller than what it scrolls. */
+/* Passing a notification drawer to Page wraps the whole content area in a drawer,
+   and that wrapper's main container does not grow — so the page sized itself to its
+   content and left the rest of the window empty. Only inside that wrapper, and only
+   because the drawer is what put it there. */
+.pf-v6-c-page__drawer > .pf-v6-c-drawer .pf-v6-c-page__main-container {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.keydra-browser {
+  display: flex;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+/* Both panes of the browser are PatternFly cards, so their surface, edge, padding and
+   the rule under the toolbar are the component's rather than this file's.
+
+   What is left is the one thing a card cannot know: these panes hold a virtualised list,
+   which measures the height of its own scroll container and renders that many rows. Every
+   level between the page and that container must therefore be allowed to shrink — a flex
+   child's automatic minimum size is its content, and a scrollable child has to be
+   permitted to be smaller than what it scrolls. Without it the container reports the full
+   scroll height, the list renders every row into the DOM, and the tab runs out of memory.
+   That is what this block is for, and it is why it cannot be expressed with components. */
+.keydra-browser > .pf-v6-c-page__main-body,
+.keydra-browser > .pf-v6-c-drawer,
+.keydra-browser .pf-v6-c-drawer__main,
+.keydra-browser .pf-v6-c-drawer__content,
+.keydra-browser .pf-v6-c-sidebar__main,
+.keydra-browser__body,
+.keydra-browser__split,
+.keydra-browser__content,
+.keydra-browser__list,
+.keydra-browser__list-body,
+.keydra-browser__tree-card,
+.keydra-browser__tree-body {
+  min-block-size: 0;
+}
+
+.keydra-browser > .pf-v6-c-page__main-body,
+.keydra-browser > .pf-v6-c-drawer,
+.keydra-browser__split,
+.keydra-browser__content,
+.keydra-browser .pf-v6-c-sidebar__main {
+  flex: 1 1 auto;
+}
+
+/* PatternFly's own body wrapper is a plain div, so on a page whose height is the window's
+   it is the one link in the chain that cannot shrink: it reported the list's full scroll
+   height — a hundred and twenty thousand pixels for three thousand rows — and the table
+   rendered every row it believed was on screen. Named here rather than switched off with
+   hasBodyWrapper={false}, so the page keeps the tree PatternFly expects. */
+.keydra-browser > .pf-v6-c-page__main-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.keydra-browser__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.keydra-browser__split {
+  display: flex;
+}
+
+/* Sidebar lays its panel and content out in a row, so the content is a flex item on
+   the inline axis only — nothing constrains its block size, and it grew to its
+   content's full height while its parent stayed at the window's. */
+.keydra-browser__content {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  block-size: 100%;
+  overflow: hidden;
+}
+
+/* The list card is a column: its header at its natural height, its body taking the rest. */
+.keydra-browser__list,
+.keydra-browser__tree-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+/* The card's body is block flow, so a child asking to fill it has nothing to fill: the
+   virtualised table sized itself to its own scroll height — four hundred thousand pixels
+   for ten thousand rows — and the list rendered every row it thought was visible. A column
+   here is what gives the table a height to be measured against. It does not scroll itself;
+   the table's own viewport does. */
+.keydra-browser__list-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* The tree, on the other hand, is ordinary content and scrolls as a whole. */
+.keydra-browser__tree-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+/* Full height beside the list rather than as tall as its deepest node: two panes of
+   different heights read as one pane and a leftover. */
+.keydra-browser__tree {
+  align-self: stretch;
+  display: flex;
+}
+
+/* The path above the tree, which says where the list is filtered and is the way back up. */
+.keydra-tree__path {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
+.keydra-key-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.keydra-key-table__viewport {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+/* The open value is a surface beside the list, not a region of the page with a rule down
+   its left edge. It scrolls its own content, so a long hash cannot scroll the page. */
+.keydra-browser .pf-v6-c-drawer__panel {
+  overflow: hidden;
+  background: var(--pf-t--global--background--color--primary--default);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  box-shadow: var(--pf-t--global--box-shadow--sm);
+  margin-inline-start: var(--pf-t--global--spacer--md);
+}
+
+.keydra-value__add {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+}
+
+/* The search box needs room to be usable but must not crowd out the filters. */
+.keydra-toolbar__search {
+  min-inline-size: 14rem;
+  max-inline-size: 22rem;
+  flex: 1 1 auto;
+}
+
+/* The count is the last thing to lose space, and never wraps mid-phrase. */
+/* The count never wraps mid-phrase; its colour and its alignment in the row are
+   PatternFly utilities on the element itself. */
+.keydra-toolbar__count {
+  white-space: nowrap;
+}
+
+/* Console: a transcript that grows downward with the input pinned under it. */
+.keydra-console {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.keydra-console__transcript {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--pf-t--global--spacer--md);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--primary--default);
+  box-shadow: var(--pf-t--global--box-shadow--sm);
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
+/* What the transcript says before there is a transcript is prose, not output, and reads
+   as neither when it inherits the monospace the terminal is set in. */
+.keydra-console__transcript .pf-v6-c-empty-state {
+  font-family: var(--pf-t--global--font--family--body);
+}
+
+.keydra-console__entry + .keydra-console__entry {
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.keydra-console__echo {
+  color: var(--pf-t--global--text--color--regular);
+  overflow-wrap: anywhere;
+}
+
+.keydra-console__prompt {
+  color: var(--pf-t--global--color--brand--default);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.keydra-console__reply {
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+  overflow-wrap: anywhere;
+}
+
+.keydra-console__text {
+  color: var(--pf-t--global--text--color--regular);
+}
+
+.keydra-console__number {
+  color: var(--pf-t--global--color--brand--default);
+}
+
+.keydra-console__nil {
+  font-style: italic;
+}
+
+/* Replies are numbered like redis-cli, and nested ones indent rather than flatten. */
+.keydra-console__list {
+  margin: 0;
+  padding-inline-start: var(--pf-t--global--spacer--xl);
+}
+
+.keydra-console__timing {
+  margin-inline-start: var(--pf-t--global--spacer--sm);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* PatternFly puts the class on its form-control wrapper, so the input itself needs
+   naming too — otherwise the command line is typed in the body font. */
+.keydra-console__input,
+.keydra-console__input input {
+  font-family: var(--pf-t--global--font--family--mono);
+}
+
+/* Pub/Sub: controls on the left, feed filling the height on the right. */
+.keydra-pubsub {
+  min-block-size: 0;
+  block-size: 100%;
+}
+
+/* The controls column grows when a subscription is added — a second card appears above
+   the publish form — while the page's height stays the window's. Without a scroll of its
+   own the publish form is simply clipped away, with nothing on screen to say it is there. */
+.keydra-pubsub__controls {
+  /* Capped as well as scrollable: without the cap the column simply grows to its
+     content and the page clips it, and a scroll that never has anything to scroll
+     is no help. */
+  max-block-size: 100%;
+  overflow: auto;
+  min-block-size: 0;
+}
+
+.keydra-pubsub__feed {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  block-size: 100%;
+}
+
+.keydra-pubsub__feed-body {
+  overflow: auto;
+  min-block-size: 0;
+}
+
+/* Monitoring: a grid of cards that scrolls as a whole, with each table scrolling
+   inside its own card so one long list cannot push the rest off the page. */
+.keydra-monitoring {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+}
+
+.keydra-monitoring__scroll {
+  max-block-size: 22rem;
+  overflow: auto;
+}
+
+/* The whole hash-slot range as one bar. A gap in it is a gap in the keyspace, which
+   is the thing worth seeing at a glance and the reason this is a bar and not a list. */
+.keydra-slots {
+  display: flex;
+  block-size: 1.5rem;
+  inline-size: 100%;
+  border-radius: var(--pf-t--global--border--radius--small);
+  overflow: hidden;
+  background: var(--pf-t--global--background--color--secondary--default);
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.keydra-slots__segment {
+  display: block;
+  block-size: 100%;
+}
+
+/* Adjacent segments need a seam, or two nodes' ranges read as one. */
+.keydra-slots__segment + .keydra-slots__segment {
+  border-inline-start: 1px solid var(--pf-t--global--background--color--primary--default);
+}
+
+/* The ground everything stands on.
+ *
+ * PatternFly gives it to `.pf-v6-c-page`, which every screen here has except one: the login
+ * page renders outside the page shell, and PatternFly's `.pf-v6-c-login` deliberately sets no
+ * background of its own. Its card is `--pf-t--global--background--color--primary--default`,
+ * so with nothing behind it there is white on white and no card to see.
+ *
+ * The value is not a choice — it is the token `.pf-v6-c-page` itself uses, so the login page
+ * stands on exactly the ground the rest of the application does. On the body rather than on
+ * the login element: PatternFly's background motif is a `z-index: -1` child of that element,
+ * and a background on its own parent paints straight over it. */
+body {
+  background-color: var(--pf-t--global--background--color--secondary--default);
+}
+
+/*
+ * Room in the masthead for the wordmark.
+ *
+ * PatternFly caps a masthead logo at 2.375rem, which suits the bar its own examples use. This
+ * masthead is taller than that, and a mark sized for a shorter bar reads as a mark somebody forgot
+ * to size. Raised deliberately rather than left to drift: the number here and MASTHEAD_HEIGHT in
+ * Wordmark.tsx are one decision written in two places, and a wordmark taller than its slot is a
+ * wordmark that gets clipped.
+ */
+.pf-v6-c-masthead {
+  --pf-v6-c-masthead__logo--MaxHeight: 3rem;
+}

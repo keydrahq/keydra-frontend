@@ -1,0 +1,72 @@
+name: Bug report
+description: The interface does something other than what it says it does
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **If this is a security problem, do not file it here.** Use *Security* → *Report a
+        vulnerability* instead.
+
+        If the interface drew what the server sent and the server was wrong, the report
+        belongs in keydra-backend.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, and what the interface did instead of what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Open a target's Keys tab
+        2. Type user:* into the filter
+        3. The count keeps rising after the scan says it finished
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Which language was the interface in
+      options: [English, Türkçe]
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 145, Chrome 141, Safari 19
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Which appearance
+      description: Only if it matters. A layout fault often belongs to one of these.
+      multiple: true
+      options: [Light, Dark, Felt, High contrast, Glass, Not related to appearance]
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What the About page says, or the commit you built from.
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Anything the browser console said
+      description: >
+        **Read it before pasting.** A console line here can carry a key name, and a key name
+        is your data.
+      render: text

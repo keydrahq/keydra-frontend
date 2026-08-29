@@ -1,0 +1,198 @@
+/*
+ * Keydra's own picture: the instances at the middle and everything they reach around them.
+ *
+ * <p>Shares the token mapping in Topology/clusterGraph.css — React Flow wearing PatternFly — and
+ * adds what this graph has that the cluster one does not: traffic drawn as traffic.
+ */
+
+/* A ring rather than a row, so nothing on it is first and nothing is subordinate. */
+.keydra-flow .keydra-flow__node {
+  width: 13.5rem;
+  cursor: default;
+}
+
+/*
+ * The instance is the thing everything else is arranged around, so it is the one node drawn as a
+ * subject rather than as an item: a little wider, and lifted off the canvas.
+ */
+.keydra-flow .keydra-flow__node--instance {
+  width: 15rem;
+  box-shadow: var(--pf-t--global--box-shadow--md);
+}
+
+/*
+ * The status is a ring around the whole card rather than a stripe down its side.
+ *
+ * <p>The cluster graph uses a stripe because its colour is a *name* — which shard this is — and a
+ * name belongs beside a thing. Here the colour is a verdict about the thing itself, and a verdict
+ * belongs around it.
+ */
+.keydra-flow__node--ok {
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--color--status--success--default);
+}
+
+.keydra-flow__node--bad {
+  border: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--color--status--danger--default);
+  /* The one thing on the page that should catch an eye across the room. */
+  box-shadow: 0 0 0 4px var(--pf-t--global--color--status--danger--default);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--pf-t--global--color--status--danger--default) 25%, transparent);
+}
+
+.keydra-flow__node--quiet {
+  border: var(--pf-t--global--border--width--regular) dashed
+    var(--pf-t--global--border--color--default);
+}
+
+.keydra-flow__node--leader {
+  border: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--color--brand--default);
+}
+
+/* The address is what somebody matches against a config file, so it is set as one. */
+.keydra-flow__id {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  overflow-wrap: anywhere;
+}
+
+/* Joins, not controls: an edge has to attach somewhere and nothing here is connectable. */
+.keydra-flow .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.keydra-flow .react-flow__node.selectable:focus,
+.keydra-flow .react-flow__node.selectable:focus-visible {
+  outline: none;
+}
+
+.keydra-flow .react-flow__node:focus-visible .keydra-flow__node {
+  outline: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--color--brand--default);
+  outline-offset: 2px;
+}
+
+/* An ordinary link: present, and saying nothing more than that. */
+.keydra-flow .keydra-flow__edge {
+  stroke: var(--pf-t--global--border--color--default);
+  stroke-width: 1.5;
+}
+
+/*
+ * A link that is not working, drawn as a break. Dashed and moving because a still red line reads
+ * as a design choice and a moving one reads as a fault — which is what it is.
+ */
+.keydra-flow .keydra-flow__edge--broken {
+  stroke: var(--pf-t--global--color--status--danger--default);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 6;
+  animation: keydra-flow-break 0.8s linear infinite;
+}
+
+@keyframes keydra-flow-break {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/*
+ * One measured message on its way.
+ *
+ * <p>Brand colour, because this is Keydra's own traffic rather than a status — the status colours
+ * are spoken for, and a green dot on a green ring would be saying the same thing twice.
+ */
+.keydra-flow .keydra-flow__packet {
+  fill: var(--pf-t--global--color--brand--default);
+  filter: drop-shadow(0 0 4px var(--pf-t--global--color--brand--default));
+}
+
+/* The rate, sitting on the line it belongs to. */
+.keydra-flow .keydra-flow__rate {
+  position: absolute;
+  padding: 0 var(--pf-t--global--spacer--xs);
+  border-radius: var(--pf-t--global--border--radius--small);
+  background: var(--pf-t--global--background--color--primary--default);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/*
+ * The traffic meter in the corner.
+ *
+ * <p>Drawn as part of the canvas rather than as a card above it, because it is about what the
+ * canvas is showing. Numbers in tabular figures so the column does not jitter while it counts.
+ */
+.keydra-flow .keydra-flow__meter {
+  margin: var(--pf-t--global--spacer--sm);
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--primary--default);
+  box-shadow: var(--pf-t--global--box-shadow--sm);
+}
+
+.keydra-flow .keydra-flow__meter-title {
+  margin-block-end: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.keydra-flow .keydra-flow__meter dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 var(--pf-t--global--spacer--md);
+  margin: 0;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+.keydra-flow .keydra-flow__meter dt {
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.keydra-flow .keydra-flow__meter dd {
+  margin: 0;
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-t--global--text--color--regular);
+}
+
+/* The minimap belongs to the page, not to React Flow's own palette. */
+.keydra-flow .react-flow__minimap {
+  margin: var(--pf-t--global--spacer--sm);
+  border: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--medium);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.keydra-flow .react-flow__minimap-mask {
+  fill: color-mix(
+    in srgb,
+    var(--pf-t--global--background--color--primary--default) 60%,
+    transparent
+  );
+}
+
+/*
+ * Asked for less movement: everything stops. The picture is never drawn *by* the animation — the
+ * dots are on top of a line that is already there, and the line is the part that carries meaning.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .keydra-flow .keydra-flow__packet,
+  .keydra-flow .keydra-flow__edge--broken {
+    animation: none;
+    display: none;
+  }
+
+  .keydra-flow .keydra-flow__edge--broken {
+    display: initial;
+  }
+}

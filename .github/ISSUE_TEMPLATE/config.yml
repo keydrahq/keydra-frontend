@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: A security problem
+    url: https://github.com/keydrahq/keydra-frontend/security/advisories/new
+    about: Report it privately. Never in a public issue.
+
+  - name: The API answered wrongly, or not at all
+    url: https://github.com/keydrahq/keydra-backend/issues
+    about: If the interface drew what the server sent, the report belongs there.
+
+  - name: The manual does not match the interface
+    url: https://github.com/keydrahq/keydra-doc/issues
+    about: A procedure naming a button that is not there any more.

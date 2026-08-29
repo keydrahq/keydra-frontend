@@ -1,0 +1,10 @@
+{
+  "LOADING": "Yükleniyor",
+  "RETRY": "Yeniden dene",
+  "CANCEL": "İptal",
+  "TYPE_THE_NAME": "Devam etmek için {{name}} yazın",
+  "TYPE_THE_NAME_HELP": "Bu hedef, kendisini boşaltacak bir işlemden önce adının yazılmasını istiyor. Ad burada değil, sunucuda denetlenir.",
+  "CLOSE": "Kapat",
+  "SAVE": "Kaydet",
+  "DELETE": "Sil"
+}

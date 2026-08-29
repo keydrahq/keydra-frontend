@@ -1,0 +1,37 @@
+name: Feature request
+description: Something the interface should let you do and does not
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: >
+        The situation rather than the control. A described problem gets a better answer than
+        a described solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you think it should do
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do instead today
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: >
+            This is about the interface. If it needs the server to answer something new, it
+            belongs in keydra-backend.
+          required: true
+        - label: I have searched the open issues for the same request
+          required: true
