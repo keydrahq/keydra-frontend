@@ -67,8 +67,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # `enableGlobalCache` is on, so the store is one directory and the runner can keep it
+      # between runs. The build stage is thrown away and its layers with it, so without this
+      # every run resolves the whole lockfile again. What `-v` mounts into a build is not in
+      # the image.
+      - name: Cache the Yarn store
+        uses: actions/cache@v6
+        with:
+          path: ~/.yarn/berry/cache
+          key: yarn-image-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-image-
+
       - name: Build
-        run: podman build --format docker -t localhost/keydra-ui:ci -f Containerfile .
+        run: |
+          mkdir -p "$HOME/.yarn/berry/cache"
+          podman build --format docker \
+            -v "$HOME/.yarn/berry/cache:/root/.yarn/berry/cache:rw" \
+            -t localhost/keydra-ui:ci -f Containerfile .
 
       # What this image is on its own: files, the single-page fallback, and the two things
       # the config must refuse. No backend needed, so this never fails for somebody else's
