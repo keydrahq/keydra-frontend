@@ -34,7 +34,7 @@
     "@patternfly/react-data-view": "^6.5.0",
     "@patternfly/react-icons": "6.6.1",
     "@patternfly/react-table": "6.6.1",
-    "@tanstack/react-query": "5.102.6",
+    "@tanstack/react-query": "5.102.7",
     "@tanstack/react-virtual": "3.14.10",
     "@xyflow/react": "^12.11.5",
     "i18next": "26.4.0",
@@ -85,7 +85,7 @@
     "prettier": "3.9.6",
     "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",
-    "vite": "8.2.1",
+    "vite": "8.2.2",
     "vitest": "4.1.11"
   },
   "msw": {
