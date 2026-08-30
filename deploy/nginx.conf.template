@@ -53,7 +53,16 @@ http {
 
     server {
         # Above 1024, so no capability is needed to bind it.
+        #
+        # Both families, and the second line is not symmetry for its own sake. The s2i image
+        # this replaced brought its own default server block, which listened on both; this
+        # file is now the whole configuration, so an address it does not name is an address
+        # nothing is on. A client that resolves `localhost` to ::1 then reaches whatever
+        # published the port and has the connection reset by it — which is what a dual-stack
+        # cluster would produce, and what a runner with IPv6 loopback produced against an
+        # image that serves IPv4 perfectly.
         listen 8080;
+        listen [::]:8080;
         server_name _;
         root /opt/keydra/html;
 

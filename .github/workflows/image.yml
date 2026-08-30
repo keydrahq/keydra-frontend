@@ -83,25 +83,38 @@ jobs:
           # this step checks the files and the refusals, and the proxy is checked below.
           podman run -d --name ui -p 8080:8080 \
             -e KEYDRA_BACKEND=http://127.0.0.1:9999 localhost/keydra-ui:ci >/dev/null
+          # 127.0.0.1 rather than localhost, which on a runner with IPv6 loopback resolves
+          # to ::1 first: what answers there is the port forwarder rather than nginx, and
+          # what it gives back when it cannot reach the container is a reset rather than a
+          # refusal — a failure that reads as "the image does not serve".
           for _ in $(seq 1 30); do
-            curl -fsS -o /dev/null http://localhost:8080/ 2>/dev/null && break; sleep 2
+            curl -fsS -o /dev/null http://127.0.0.1:8080/ 2>/dev/null && break; sleep 2
           done
-          fail() { echo "::error::$1"; podman logs --tail 40 ui; exit 1; }
+          # The port as well as the log: an image that does not serve and a published
+          # port that carries nothing fail the same assertion, and only one of the two is
+          # this image.
+          fail() {
+            echo "::error::$1"
+            podman ps -a --filter name=ui
+            podman port ui || true
+            podman logs --tail 40 ui
+            exit 1
+          }
 
-          curl -fsS -o /dev/null http://localhost:8080/ || fail "the interface is not served"
-          curl -fsS http://localhost:8080/ | grep -q '<title>Keydra</title>' \
+          curl -fsS -o /dev/null http://127.0.0.1:8080/ || fail "the interface is not served"
+          curl -fsS http://127.0.0.1:8080/ | grep -q '<title>Keydra</title>' \
             || fail "the page served is not the interface"
 
           # Every address the interface has is a route it renders itself, so a reload on one
           # must not be a 404 from nginx for a page that exists.
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/connections)
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/connections)
           [ "$code" = "200" ] || fail "a deep link answered $code"
 
           # Refused rather than merely not proxied: left alone it falls through to the
           # single-page fallback and answers 200 with index.html, where the API's own public
           # port answers 404. The two must not disagree about whether an address exists.
           for hidden in /q/metrics /q/health/ready; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8080$hidden")
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$hidden")
             [ "$code" = "404" ] || fail "$hidden answered $code"
           done
 

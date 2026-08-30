@@ -54,7 +54,11 @@ RUN yarn build
 FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 
 # gettext is for envsubst, which is how the backend's address reaches the config at start-up.
-RUN microdnf -y install nginx gettext \
+# `update` ahead of `install`, in the one layer: `latest` is rebuilt on Red Hat's cadence
+# while UBI ships errata between those rebuilds, so the tag is where the packages start
+# rather than where they currently are.
+RUN microdnf -y update \
+    && microdnf -y install nginx gettext \
     && microdnf -y clean all \
     && rm -rf /var/cache/yum
 
