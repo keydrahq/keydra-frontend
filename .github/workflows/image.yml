@@ -1,0 +1,214 @@
+name: Image
+
+# The interface alone, as quay.io/keydrahq/keydra-ui: the built single-page application on
+# nginx, with /api and /graphql proxied to the backend named at run time.
+#
+# ci.yml answers whether the code is right. This answers whether the thing that ships starts
+# and serves — which for this image is mostly a question about nginx configuration, and
+# nothing in a Vitest run can fail on a misplaced `map` directive.
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'locales/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.yarnrc.yml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - 'deploy/**'
+      - 'Containerfile'
+      - '.containerignore'
+      - '.github/workflows/image.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'locales/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.yarnrc.yml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - 'deploy/**'
+      - 'Containerfile'
+      - '.containerignore'
+      - '.github/workflows/image.yml'
+  release:
+    types: [published]
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: quay.io
+  REPOSITORY: quay.io/keydrahq/keydra-ui
+  BACKEND_IMAGE: quay.io/keydrahq/keydra-backend:main
+
+jobs:
+  image:
+    name: Build the image and serve from it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: podman build --format docker -t localhost/keydra-ui:ci -f Containerfile .
+
+      # What this image is on its own: files, the single-page fallback, and the two things
+      # the config must refuse. No backend needed, so this never fails for somebody else's
+      # reason.
+      - name: Serve from it
+        run: |
+          set -euo pipefail
+          trap 'podman rm -f ui >/dev/null 2>&1 || true' EXIT
+          # An address rather than a name, and that is not arbitrary: nginx resolves an
+          # upstream host when it loads the config, so a name that does not resolve is a
+          # container that never starts. A port with nothing on it is what is wanted here —
+          # this step checks the files and the refusals, and the proxy is checked below.
+          podman run -d --name ui -p 8080:8080 \
+            -e KEYDRA_BACKEND=http://127.0.0.1:9999 localhost/keydra-ui:ci >/dev/null
+          for _ in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:8080/ 2>/dev/null && break; sleep 2
+          done
+          fail() { echo "::error::$1"; podman logs --tail 40 ui; exit 1; }
+
+          curl -fsS -o /dev/null http://localhost:8080/ || fail "the interface is not served"
+          curl -fsS http://localhost:8080/ | grep -q '<title>Keydra</title>' \
+            || fail "the page served is not the interface"
+
+          # Every address the interface has is a route it renders itself, so a reload on one
+          # must not be a 404 from nginx for a page that exists.
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/connections)
+          [ "$code" = "200" ] || fail "a deep link answered $code"
+
+          # Refused rather than merely not proxied: left alone it falls through to the
+          # single-page fallback and answers 200 with index.html, where the API's own public
+          # port answers 404. The two must not disagree about whether an address exists.
+          for hidden in /q/metrics /q/health/ready; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8080$hidden")
+            [ "$code" = "404" ] || fail "$hidden answered $code"
+          done
+
+          # The address is substituted at start-up rather than baked in, so this checks the
+          # substitution happened — envsubst given the wrong variable list eats nginx's own
+          # $host and $remote_addr and produces a config that starts and forwards nothing
+          # useful.
+          podman exec ui grep -q 'proxy_pass http://127.0.0.1:9999;' \
+            /opt/app-root/etc/nginx.default.d/keydra-ui.conf \
+            || fail "the backend address was not substituted into the config"
+          podman exec ui grep -q 'proxy_set_header Host \$host;' \
+            /opt/app-root/etc/nginx.default.d/keydra-ui.conf \
+            || fail "envsubst ate nginx's own variables"
+
+          echo "  serves, falls back, refuses /q, and points where it was told"
+
+      # And that the proxy actually carries a session, which is the whole reason this image
+      # proxies rather than letting the browser call across origins. Needs the API image, so
+      # it is skipped when that has not been published yet — visibly, in the run summary,
+      # rather than by quietly passing.
+      - name: Serve the API through it
+        run: |
+          set -euo pipefail
+          trap 'podman pod rm -f split >/dev/null 2>&1 || true' EXIT
+          if ! podman pull -q "${BACKEND_IMAGE}" >/dev/null 2>&1; then
+            echo "SKIPPED: ${BACKEND_IMAGE} could not be pulled, so the proxy was checked" \
+                 "against configuration only." >> "${GITHUB_STEP_SUMMARY}"
+            echo "::warning::${BACKEND_IMAGE} is not available; the end-to-end proxy check did not run"
+            exit 0
+          fi
+
+          podman pod create --name split >/dev/null
+          podman run -d --pod split --name sp-pg \
+            -e POSTGRES_DB=keydra -e POSTGRES_USER=keydra -e POSTGRES_PASSWORD=keydra \
+            docker.io/library/postgres:17-alpine >/dev/null
+          for _ in $(seq 1 30); do podman exec sp-pg pg_isready -U keydra >/dev/null 2>&1 && break; sleep 2; done
+
+          podman run -d --pod split --name sp-api \
+            -e KEYDRA_DB_URL=postgresql://localhost:5432/keydra \
+            -e KEYDRA_DB_USERNAME=keydra -e KEYDRA_DB_PASSWORD=keydra \
+            -e KEYDRA_SECRET_KEY="$(openssl rand -base64 32)" \
+            -e KEYDRA_COOKIE_SECURE=false "${BACKEND_IMAGE}" >/dev/null
+          for _ in $(seq 1 60); do
+            podman exec sp-api curl -fsS -o /dev/null http://localhost:9001/q/health/ready >/dev/null 2>&1 && break
+            sleep 5
+          done
+
+          # One pod, one network namespace, so the backend is on localhost from nginx.
+          podman run -d --pod split --name sp-ui \
+            -e KEYDRA_BACKEND=http://localhost:8181 localhost/keydra-ui:ci >/dev/null
+          for _ in $(seq 1 20); do
+            podman exec sp-ui curl -fsS -o /dev/null http://localhost:8080/ 2>/dev/null && break; sleep 2
+          done
+
+          X() { podman exec sp-ui curl -s "$@"; }
+          fail() { echo "::error::$1"; podman logs --tail 60 sp-api; exit 1; }
+
+          X -f http://localhost:8080/api/v1/about | grep -q version || fail "/api did not reach the backend"
+          code=$(X -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/nope)
+          [ "$code" = "404" ] || fail "an unknown endpoint answered $code through the proxy"
+
+          code=$(X -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/v1/auth/setup \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"ci-admin","password":"a-password-nobody-guesses"}')
+          [ "$code" = "201" ] || fail "the first administrator could not be created through the proxy ($code)"
+
+          # The cookie is the reason for the proxy. If it does not survive the hop, nobody
+          # stays signed in and every page is a redirect back to the sign-in form.
+          ck=$(X -i -X POST http://localhost:8080/api/v1/auth/login \
+            --data-urlencode 'username=ci-admin' --data-urlencode 'password=a-password-nobody-guesses' \
+            | grep -io 'keydra_session=[^;]*' | head -1)
+          [ -n "$ck" ] || fail "signing in through the proxy returned no session"
+          X -f -H "Cookie: $ck" http://localhost:8080/api/v1/security/me | grep -q ci-admin \
+            || fail "the session does not answer for the account that took it"
+
+          echo "  the API is reachable through it and the session survives the hop"
+
+      - name: Sign in to the registry
+        if: >-
+          (github.event_name == 'push' || github.event_name == 'release')
+          && github.repository == 'keydrahq/keydra-frontend'
+        env:
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
+        run: |
+          if [ -z "${QUAY_USERNAME}" ] || [ -z "${QUAY_TOKEN}" ]; then
+            echo "::error::QUAY_USERNAME and QUAY_TOKEN are not set. Add the keydrahq robot" \
+                 "account's name and token as repository secrets, and give it write on" \
+                 "quay.io/keydrahq/keydra-ui."
+            exit 1
+          fi
+          podman login "${REGISTRY}" --username "${QUAY_USERNAME}" --password-stdin <<< "${QUAY_TOKEN}"
+
+      - name: Push
+        if: >-
+          (github.event_name == 'push' || github.event_name == 'release')
+          && github.repository == 'keydrahq/keydra-frontend'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ -n "${RELEASE_TAG:-}" ]; then
+            tags=("${RELEASE_TAG#v}" latest)
+          else
+            tags=(main)
+          fi
+          for tag in "${tags[@]}"; do
+            podman tag localhost/keydra-ui:ci "${REPOSITORY}:${tag}"
+            podman push "${REPOSITORY}:${tag}"
+            echo "pushed ${REPOSITORY}:${tag}" >> "${GITHUB_STEP_SUMMARY}"
+          done
+          digest=$(podman inspect --format '{{index .RepoDigests 0}}' "${REPOSITORY}:${tags[0]}")
+          echo "digest: \`${digest}\`" >> "${GITHUB_STEP_SUMMARY}"
