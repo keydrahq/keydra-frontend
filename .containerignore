@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.yarn/cache
+.yarn/install-state.gz
+
+.git
+.gitignore
+.idea/
+.vscode/
+.env
+*.log
+
+.github/
+*.md
+LICENSE
+NOTICE
