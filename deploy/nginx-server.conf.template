@@ -1,0 +1,84 @@
+# Included inside the server block. ${KEYDRA_BACKEND} is substituted at start-up by
+# deploy/start.sh, so one image serves any deployment.
+
+# The single-page application. Every address the interface has is a route it renders itself,
+# so anything that is not a file on disk is index.html — otherwise a reload on /connections
+# is a 404 from nginx for a page that exists.
+location / {
+    root /opt/app-root/src;
+    try_files $uri $uri/ /index.html;
+}
+
+# Fingerprinted assets carry a content hash in the name, so a change produces a different
+# name and these can be cached for a year. index.html cannot, and is handled below.
+location /assets/ {
+    root /opt/app-root/src;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    access_log off;
+}
+
+# Never cached, because it is the file that names every other one. A stale index.html is an
+# interface asking for assets that were replaced.
+location = /index.html {
+    root /opt/app-root/src;
+    add_header Cache-Control "no-store";
+}
+
+# The REST surface and the notification socket, which share this path — hence the upgrade
+# headers on the same rule.
+#
+# Proxied rather than called across origins, and that is not a preference: the session is a
+# cookie, and a cookie sent to another origin needs SameSite=None and a CORS policy that
+# allows credentials. One origin to the browser is fewer things to get wrong, and it is the
+# arrangement the single image already has.
+location /api {
+    proxy_pass ${KEYDRA_BACKEND};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    # What Keydra reads to know who signed in from where — and what it ignores unless
+    # KEYDRA_BEHIND_PROXY names this proxy as one to believe. Sending it is this side's job;
+    # deciding whether to trust it is the backend's.
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # A key browser streams over SCAN and a socket stays open: neither must be cut off at a
+    # minute because nothing was said for a minute.
+    proxy_buffering off;
+    proxy_read_timeout 1h;
+}
+
+# GraphQL is not under /api and needs its own rule. Subscriptions arrive on the same path,
+# upgraded.
+location /graphql {
+    proxy_pass ${KEYDRA_BACKEND};
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_read_timeout 1h;
+}
+
+# /q is refused rather than merely not proxied, and the difference is the whole point.
+#
+# Left alone it falls through to the single-page fallback above, which answers 200 with
+# index.html — no data, but a 200 where the backend's own public port answers 404. The two
+# should not disagree about whether an address exists, and a check written against one would
+# pass against the other for the wrong reason.
+#
+# What is behind it is why: health, readiness and metrics answer without a session, and what
+# they say is which instances are running, how many targets and how much work is moving — a
+# map of the installation. The backend puts them on a port of their own so that whatever
+# publishes the interface publishes none of it, and forwarding them here would undo that.
+location /q {
+    return 404;
+}
+
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "no-referrer" always;
