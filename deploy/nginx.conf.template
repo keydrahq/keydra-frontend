@@ -1,0 +1,139 @@
+# The whole of nginx's configuration, rather than a fragment dropped into somebody else's.
+#
+# The image this replaced was Red Hat's s2i nginx, which is built to compile an application
+# inside the container and therefore carries gdb, vim, rsync, python3 and the Perl stack —
+# 252 packages, and 159 of the vulnerabilities the registry's scanner reported against an
+# image whose entire job is to serve files that were built somewhere else. This one installs
+# nginx onto ubi-minimal and nothing else: 136 packages, and none of those five.
+#
+# What that costs is this file. The s2i image supplied an nginx.conf with two include
+# directories; here the configuration is ours, which is also why the `map` below can sit
+# where nginx requires it without a second file to explain the split.
+#
+# ${KEYDRA_BACKEND} is substituted at start-up by start.sh, so one image serves any
+# deployment rather than one image per deployment.
+
+worker_processes auto;
+# Logs to the container's streams, because a file inside a container is a log nobody reads.
+error_log /dev/stderr warn;
+# Not /run: an arbitrary uid — which is what OpenShift assigns — cannot write there, and the
+# failure is a container that exits before it has said anything useful.
+pid /tmp/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    access_log    /dev/stdout;
+
+    sendfile      on;
+    tcp_nopush    on;
+    server_tokens off;
+
+    # Everything nginx writes goes to /tmp for the same reason as the pid file: the image
+    # runs unprivileged and may be given a uid that owns nothing.
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path       /tmp/proxy_temp;
+    fastcgi_temp_path     /tmp/fastcgi_temp;
+    uwsgi_temp_path       /tmp/uwsgi_temp;
+    scgi_temp_path        /tmp/scgi_temp;
+
+    # A WebSocket upgrade is a hop-by-hop header: the Connection header a proxy sends is its
+    # own rather than the client's. This says "Connection: upgrade" when the client asked to
+    # upgrade and "Connection: close" otherwise, which is what lets one location serve both
+    # the REST requests and the notification socket that shares its path. It has to be here,
+    # at the http level — nginx refuses a map inside a server block.
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    server {
+        # Above 1024, so no capability is needed to bind it.
+        listen 8080;
+        server_name _;
+        root /opt/keydra/html;
+
+        # The single-page application. Every address the interface has is a route it renders
+        # itself, so anything that is not a file on disk is index.html — otherwise a reload
+        # on /connections is a 404 from nginx for a page that exists.
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Fingerprinted assets carry a content hash in the name, so a change produces a
+        # different name and these can be cached for a year.
+        location /assets/ {
+            add_header Cache-Control "public, max-age=31536000, immutable";
+            access_log off;
+        }
+
+        # Never cached, because it is the file that names every other one. A stale index.html
+        # is an interface asking for assets that were replaced.
+        location = /index.html {
+            add_header Cache-Control "no-store";
+        }
+
+        # The REST surface and the notification socket, which share this path — hence the
+        # upgrade headers on the same rule.
+        #
+        # Proxied rather than called across origins, and that is not a preference: the
+        # session is a cookie, and a cookie sent to another origin needs SameSite=None and a
+        # CORS policy that allows credentials. One origin to the browser is fewer things to
+        # get wrong, and it is the arrangement the single image already has.
+        location /api {
+            proxy_pass ${KEYDRA_BACKEND};
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $host;
+            # What Keydra reads to know who signed in from where — and what it ignores unless
+            # KEYDRA_BEHIND_PROXY names this proxy as one to believe. Sending it is this
+            # side's job; deciding whether to trust it is the backend's.
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            # A key browser streams over SCAN and a socket stays open: neither must be cut
+            # off at a minute because nothing was said for a minute.
+            proxy_buffering off;
+            proxy_read_timeout 1h;
+        }
+
+        # GraphQL is not under /api and needs its own rule. Subscriptions arrive on the same
+        # path, upgraded.
+        location /graphql {
+            proxy_pass ${KEYDRA_BACKEND};
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_buffering off;
+            proxy_read_timeout 1h;
+        }
+
+        # /q is refused rather than merely not proxied, and the difference is the whole point.
+        #
+        # Left alone it falls through to the single-page fallback above, which answers 200
+        # with index.html — no data, but a 200 where the backend's own public port answers
+        # 404. The two should not disagree about whether an address exists, and a check
+        # written against one would pass against the other for the wrong reason.
+        #
+        # What is behind it is why: health, readiness and metrics answer without a session,
+        # and what they say is which instances are running, how many targets and how much
+        # work is moving — a map of the installation. The backend puts them on a port of
+        # their own so that whatever publishes the interface publishes none of it.
+        location /q {
+            return 404;
+        }
+
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "no-referrer" always;
+    }
+}
