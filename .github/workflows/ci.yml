@@ -20,13 +20,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Two setup-node calls, and corepack between them, which is the documented way round a
+      # real ordering problem rather than belt and braces. `cache: yarn` makes the action run
+      # `yarn cache dir` to find what to cache, and the yarn on a fresh runner is 1.22 — which
+      # refuses to run at all for a project whose packageManager field says 4.x, so the step
+      # fails before anything is installed. Enabling corepack first needs a Node to enable it
+      # against, and enabling it before any setup-node leaves its shims pointing at the Node
+      # setup-node is about to replace. Hence: install Node, enable corepack, ask for the cache.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack
+        run: corepack enable
+
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: yarn
-
-      - name: Enable Corepack
-        run: corepack enable
 
       # --immutable: a lockfile the install would have changed fails here rather than
       # quietly resolving to something nobody has run.
