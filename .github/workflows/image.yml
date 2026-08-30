@@ -41,6 +41,9 @@ on:
       - '.github/workflows/image.yml'
   release:
     types: [published]
+  # The base is rebuilt from a tag Red Hat republishes, so the same source produces a patched
+  # image a week later. The weekly run publishes, which is the whole point: found and not
+  # shipped is the same as not found, and between releases nothing else moves :main.
   schedule:
     - cron: '0 7 * * 1'
   workflow_dispatch:
@@ -106,11 +109,9 @@ jobs:
           # substitution happened — envsubst given the wrong variable list eats nginx's own
           # $host and $remote_addr and produces a config that starts and forwards nothing
           # useful.
-          podman exec ui grep -q 'proxy_pass http://127.0.0.1:9999;' \
-            /opt/app-root/etc/nginx.default.d/keydra-ui.conf \
+          podman exec ui grep -q 'proxy_pass http://127.0.0.1:9999;' /tmp/nginx.conf \
             || fail "the backend address was not substituted into the config"
-          podman exec ui grep -q 'proxy_set_header Host \$host;' \
-            /opt/app-root/etc/nginx.default.d/keydra-ui.conf \
+          podman exec ui grep -q 'proxy_set_header Host \$host;' /tmp/nginx.conf \
             || fail "envsubst ate nginx's own variables"
 
           echo "  serves, falls back, refuses /q, and points where it was told"
@@ -178,7 +179,8 @@ jobs:
 
       - name: Sign in to the registry
         if: >-
-          (github.event_name == 'push' || github.event_name == 'release')
+          (github.event_name == 'push' || github.event_name == 'release'
+           || github.event_name == 'schedule')
           && github.repository == 'keydrahq/keydra-frontend'
         env:
           QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
@@ -194,7 +196,8 @@ jobs:
 
       - name: Push
         if: >-
-          (github.event_name == 'push' || github.event_name == 'release')
+          (github.event_name == 'push' || github.event_name == 'release'
+           || github.event_name == 'schedule')
           && github.repository == 'keydrahq/keydra-frontend'
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}

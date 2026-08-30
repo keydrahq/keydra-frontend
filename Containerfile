@@ -41,25 +41,38 @@ COPY . .
 RUN yarn build
 
 # --- Stage 2: serve -----------------------------------------------------------
-# UBI's nginx runs as an unprivileged user, listens above 1024, and keeps its writable state
-# in directories that are group-writable — which is what makes it start under an arbitrary
-# UID, the way OpenShift assigns one.
-FROM registry.access.redhat.com/ubi10/nginx-126:latest
+# nginx installed onto ubi-minimal rather than Red Hat's s2i nginx image.
+#
+# That image is built to compile an application inside the container, so it carries gdb, vim,
+# rsync, python3 and the whole Perl stack: 252 packages against this one's 136, and 159 of
+# the vulnerabilities the registry's scanner reported against an image whose entire job is to
+# serve files that were built in the stage above. None of those five is here.
+#
+# What it costs is deploy/nginx.conf.template, which is the whole configuration rather than a
+# fragment dropped into somebody else's. That is also what lets the `map` sit where nginx
+# requires it without a second file to explain the split.
+FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 
-USER root
+# gettext is for envsubst, which is how the backend's address reaches the config at start-up.
+RUN microdnf -y install nginx gettext \
+    && microdnf -y clean all \
+    && rm -rf /var/cache/yum
 
-COPY --from=build --chown=1001:0 /build/dist/ /opt/app-root/src/
+# Everything nginx writes goes to /tmp, so the only directories that need an owner are the
+# ones holding what it reads. Group 0 rather than a uid, because that is what lets a platform
+# assign an arbitrary one — which is what OpenShift does.
+# `install -d` rather than mkdir followed by chmod -R: under a rootless build the recursive
+# chmod applies to the parent and then fails on the directory it just created, with
+# "Operation not permitted" from root, which reads like a broken image rather than a
+# recursion quirk. Setting mode, owner and group as the directory is made avoids the
+# question. Group 0 rather than a uid, because that is what lets a platform assign an
+# arbitrary one — which is what OpenShift does.
+RUN install -d -m 0775 -o 1001 -g 0 /opt/keydra /opt/keydra/html /opt/keydra/etc
 
-# Two config files, into two directories, because nginx cares which. `nginx.d` is included at
-# the http level, which is the only place a `map` is allowed; `nginx.default.d` is included
-# inside the server block, which is where a `location` belongs. Getting them the wrong way
-# round is a container that will not start, with a message about an unexpected directive.
-COPY --chown=1001:0 deploy/nginx-http.conf /opt/app-root/etc/nginx.d/keydra-ui.conf
-# The server half is a template rather than a file: the backend's address is substituted at
-# start-up, so one image serves any deployment instead of one image per deployment.
-COPY --chown=1001:0 deploy/nginx-server.conf.template /opt/app-root/etc/nginx-server.conf.template
-COPY --chown=1001:0 deploy/start.sh /opt/app-root/bin/start.sh
-RUN chmod +x /opt/app-root/bin/start.sh
+COPY --from=build --chown=1001:0 /build/dist/ /opt/keydra/html/
+COPY --chown=1001:0 deploy/nginx.conf.template /opt/keydra/etc/nginx.conf.template
+COPY --chown=1001:0 deploy/start.sh /opt/keydra/start.sh
+RUN chmod +x /opt/keydra/start.sh
 
 USER 1001
 
@@ -67,6 +80,7 @@ USER 1001
 # manifests in keydrahq/keydra call the backend's Service.
 ENV KEYDRA_BACKEND="http://keydra-backend:8181"
 
+# Above 1024, so binding it needs no capability.
 EXPOSE 8080
 
 # The site is static files with a proxy in front: if the index answers, nginx is serving. It
@@ -75,4 +89,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
     CMD ["sh", "-c", "curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
 
-CMD ["/opt/app-root/bin/start.sh"]
+CMD ["/opt/keydra/start.sh"]
