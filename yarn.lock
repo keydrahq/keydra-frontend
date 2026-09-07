@@ -1519,12 +1519,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:19.2.5":
-  version: 19.2.5
-  resolution: "@types/react-dom@npm:19.2.5"
+"@types/react-dom@npm:19.2.7":
+  version: 19.2.7
+  resolution: "@types/react-dom@npm:19.2.7"
   peerDependencies:
     "@types/react": ^19.2.0
-  checksum: 10c0/7a59467b043debf392d109daa1ba672e791f20ce6f24ae81fb54715f890f8119d24967e61e3644b6307428603b695b7d59e69eaf531bd1963a74a6cb462f5f49
+  checksum: 10c0/226ab7e2b62114125e2276b3dcc3a25060177a673f8abadb7e31f395003de72ad68075c6edc5f51b02dd1e47443920ee030239c474c47fad075ded7410836909
   languageName: node
   linkType: hard
 
@@ -3342,7 +3342,7 @@ __metadata:
     "@types/node": "npm:22.20.1"
     "@types/qrcode": "npm:^1.5.6"
     "@types/react": "npm:19.2.18"
-    "@types/react-dom": "npm:19.2.5"
+    "@types/react-dom": "npm:19.2.7"
     "@vitejs/plugin-react": "npm:6.1.1"
     "@vitest/coverage-v8": "npm:4.1.11"
     "@xyflow/react": "npm:^12.11.5"
@@ -3361,7 +3361,7 @@ __metadata:
     react: "npm:19.2.8"
     react-dom: "npm:19.2.8"
     react-i18next: "npm:17.0.12"
-    react-router: "npm:8.3.0"
+    react-router: "npm:8.3.1"
     typescript: "npm:6.0.3"
     typescript-eslint: "npm:8.68.0"
     victory-area: "npm:37.3.6"
@@ -4103,9 +4103,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-router@npm:8.3.0":
-  version: 8.3.0
-  resolution: "react-router@npm:8.3.0"
+"react-router@npm:8.3.1":
+  version: 8.3.1
+  resolution: "react-router@npm:8.3.1"
   dependencies:
     cookie-es: "npm:^3.1.1"
   peerDependencies:
@@ -4114,7 +4114,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10c0/c1277d6a75ff1b77e759bc0142e3257b6cea1eb683595a64a19d7fb341a7b9ba30c81ef8fc426e437c7fbec043bde683462b2463a055b0f58c8e5ad19cdee2ad
+  checksum: 10c0/1de8feec25518f036980ecab291ab5477fb5bc1bfbda64f830bf12bd8207d46e22824108837df4bc8386c59f29b6aaa551a6f3f72771c495b456ff643f5c6de9
   languageName: node
   linkType: hard
 
